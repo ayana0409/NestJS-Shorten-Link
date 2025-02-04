@@ -6,6 +6,7 @@ import { ShortenerModule } from './shortener/shortener.module';
 
 import * as dotenv from 'dotenv';
 import { ConfigModule } from '@nestjs/config/dist';
+import { AccountModule } from './account/account.module';
 dotenv.config()
 
 const connectionString = process.env.MONGO_DB_CONNECTIONSTRING;
@@ -20,6 +21,7 @@ if (!connectionString) {
     }),
     MongooseModule.forRoot(connectionString),
     ShortenerModule,
+    AccountModule,
   ],
   controllers: [AppController],
   providers: [AppService],
