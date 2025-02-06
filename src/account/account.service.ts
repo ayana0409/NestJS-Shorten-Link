@@ -4,20 +4,31 @@ import { UpdateAccountDto } from './dto/update-account.dto';
 import { Account, AccountDocument } from './schemas/account.schema';
 import { InjectModel } from '@nestjs/mongoose/dist/common';
 import { Model } from 'mongoose';
+import * as bcrypt from 'bcrypt';
+import { ResponseAccountDto } from './dto/response-account.dto';
 
 @Injectable()
 export class AccountService {
 
   constructor(@InjectModel(Account.name) private accountModel: Model<AccountDocument>) {}
 
-  async create(createAccountDto: CreateAccountDto): Promise<Account> {
+  async create(createAccountDto: CreateAccountDto): Promise<ResponseAccountDto> {
     const existAccount = await this.accountModel.findOne({ username: createAccountDto.username }).exec();
     if (existAccount) {
       throw new BadRequestException(`Account with username ${createAccountDto.username} already exists`);
     }
-
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(createAccountDto.password, salt);
+    createAccountDto.password = hashedPassword;
+    
     const account = new this.accountModel(createAccountDto);
-    return account.save();
+    const savedAccount = await account.save();
+    
+    return {
+      username: savedAccount.username,
+      fullname: savedAccount.fullname,
+      role: savedAccount.role
+    };
   }
 
   async findAll(): Promise<Account[]> {
@@ -28,6 +39,14 @@ export class AccountService {
     const account = await this.accountModel.findById(id).exec();
     if (!account) {
       throw new NotFoundException(`Account with ID ${id} not found`);
+    }
+    return account;
+  }
+
+  async findOneByUsername(username: string): Promise<Account> {
+    const account = await this.accountModel.findOne({ username }).exec();
+    if (!account) {
+      throw new NotFoundException(`Account with username ${username} not found`);
     }
     return account;
   }
