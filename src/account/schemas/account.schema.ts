@@ -11,8 +11,8 @@ export class Account {
   @Prop({ required: true })
   password: string;
 
-  @Prop({ required: true, unique: true })
-  email: string;
+  @Prop({ required: true })
+  fullname: string;
 
   @Prop({ default: 'user' })
   role: string;

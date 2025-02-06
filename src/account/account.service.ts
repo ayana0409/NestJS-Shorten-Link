@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
 import { Account, AccountDocument } from './schemas/account.schema';
@@ -11,6 +11,11 @@ export class AccountService {
   constructor(@InjectModel(Account.name) private accountModel: Model<AccountDocument>) {}
 
   async create(createAccountDto: CreateAccountDto): Promise<Account> {
+    const existAccount = await this.accountModel.findOne({ username: createAccountDto.username }).exec();
+    if (existAccount) {
+      throw new BadRequestException(`Account with username ${createAccountDto.username} already exists`);
+    }
+
     const account = new this.accountModel(createAccountDto);
     return account.save();
   }

@@ -12,6 +12,11 @@ export class AccountController {
     return this.accountService.create(createAccountDto);
   }
 
+  @Post('register')
+  register(@Body() createAccountDto: CreateAccountDto) {
+    return this.accountService.create(createAccountDto);
+  }
+
   @Get()
   findAll() {
     return this.accountService.findAll();
