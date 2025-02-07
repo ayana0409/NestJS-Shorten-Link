@@ -16,6 +16,7 @@ import { ConfigService } from '@nestjs/config';
     async canActivate(context: ExecutionContext): Promise<boolean> {
       const request = context.switchToHttp().getRequest();
       const token = this.extractTokenFromHeader(request);
+      
       if (!token) {
         throw new UnauthorizedException();
       }
@@ -35,6 +36,7 @@ import { ConfigService } from '@nestjs/config';
   
     private extractTokenFromHeader(request: Request): string | undefined {
       const [type, token] = request.headers.authorization?.split(' ') ?? [];
+
       return type === 'Bearer' ? token : undefined;
     }
   }

@@ -1,14 +1,17 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
 import { ShortenerService } from './shortener.service';
 import { CreateShortenerDto } from './dto/create-shortener.dto';
 import { UpdateShortenerDto } from './dto/update-shortener.dto';
+import { AuthGuard } from 'src/auth/auth.guard';
 
 @Controller('shortener')
 export class ShortenerController {
   constructor(private readonly shortenerService: ShortenerService) {}
 
   @Post()
-  create(@Body() createShortenerDto: CreateShortenerDto) { 
+  @UseGuards(AuthGuard)
+  create(@Request() req, @Body() createShortenerDto: CreateShortenerDto) {
+    createShortenerDto.userId = req.user._id;
     return this.shortenerService.create(createShortenerDto);
   }
 

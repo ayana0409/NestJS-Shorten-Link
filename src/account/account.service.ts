@@ -43,7 +43,7 @@ export class AccountService {
     return account;
   }
 
-  async findOneByUsername(username: string): Promise<Account> {
+  async findOneByUsername(username: string): Promise<AccountDocument> {
     const account = await this.accountModel.findOne({ username }).exec();
     if (!account) {
       throw new NotFoundException(`Account with username ${username} not found`);

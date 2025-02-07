@@ -32,6 +32,7 @@ export class ShortenerService {
       clicks: 0,
       status: 'active',
       expiresAt: expirationDate,
+      userId: createShortenerDto.userId ?? null,
     });
 
     return shortener.save();
@@ -43,6 +44,10 @@ export class ShortenerService {
 
   findOne(id: string) {
     return this.shortenerModel.findById(id).exec();
+  }
+
+  findByUserId(userId: string) {
+    return this.shortenerModel.find({ userId }).exec();
   }
 
   async findByShortUrl(shortUrl: string) {
