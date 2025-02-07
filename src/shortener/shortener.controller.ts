@@ -20,6 +20,12 @@ export class ShortenerController {
     return this.shortenerService.findAll();
   }
 
+  @Get('user')
+  @UseGuards(AuthGuard)
+  findByUserId(@Request() req) {
+    return this.shortenerService.findByUserId(req.user._id);
+  }
+
   @Get(':shortUrl')
   findByShortUrl(@Param('shortUrl') shortUrl: string) {
     return this.shortenerService.findByShortUrl(shortUrl);
