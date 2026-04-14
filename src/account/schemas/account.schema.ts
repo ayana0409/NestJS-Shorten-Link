@@ -1,21 +1,22 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document } from "mongoose";
+import { AccountRole } from "../account-role.enum";
 
 export type AccountDocument = Account & Document;
 
 @Schema({ timestamps: true })
 export class Account {
   @Prop({ required: true, unique: true })
-  username: string;
+  username!: string;
 
   @Prop({ required: true })
-  password: string;
+  password!: string;
 
   @Prop({ required: true })
-  fullname: string;
+  fullname!: string;
 
-  @Prop({ default: 'user' })
-  role: string;
+  @Prop({ type: String, enum: AccountRole, default: AccountRole.USER })
+  role!: AccountRole;
 }
 
 export const AccountSchema = SchemaFactory.createForClass(Account);

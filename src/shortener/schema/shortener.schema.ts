@@ -1,25 +1,27 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose/dist';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose/dist";
 
 @Schema({ timestamps: true })
 export class Shortener {
   @Prop({ required: true })
-  originalUrl: string;
+  originalUrl!: string;
 
   @Prop({ required: true, unique: true })
-  shortUrl: string;
+  shortUrl!: string;
+
+  @Prop({ required: false })
+  siteName?: string;
 
   @Prop({ type: Number, default: 0 })
-  clicks: number;
+  clicks!: number;
 
   @Prop({ required: false })
   expiresAt?: Date;
 
-  @Prop({ enum: ['active', 'expired', 'disabled'], default: 'active' })
-  status: string;
+  @Prop({ enum: ["active", "expired", "disabled"], default: "active" })
+  status!: string;
 
   @Prop({ required: false })
   userId?: string;
-
 }
 
 export const ShortenerSchema = SchemaFactory.createForClass(Shortener);

@@ -1,10 +1,20 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
-import { ShortenerService } from './shortener.service';
-import { CreateShortenerDto } from './dto/create-shortener.dto';
-import { UpdateShortenerDto } from './dto/update-shortener.dto';
-import { AuthGuard } from 'src/auth/auth.guard';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Request,
+} from "@nestjs/common";
+import { ShortenerService } from "./shortener.service";
+import { CreateShortenerDto } from "./dto/create-shortener.dto";
+import { UpdateShortenerDto } from "./dto/update-shortener.dto";
+import { AuthGuard } from "../auth/auth.guard";
 
-@Controller('shortener')
+@Controller("shortener")
 export class ShortenerController {
   constructor(private readonly shortenerService: ShortenerService) {}
 
@@ -20,24 +30,27 @@ export class ShortenerController {
     return this.shortenerService.findAll();
   }
 
-  @Get('user')
+  @Get("user")
   @UseGuards(AuthGuard)
   findByUserId(@Request() req) {
     return this.shortenerService.findByUserId(req.user._id);
   }
 
-  @Get(':shortUrl')
-  findByShortUrl(@Param('shortUrl') shortUrl: string) {
+  @Get(":shortUrl")
+  findByShortUrl(@Param("shortUrl") shortUrl: string) {
     return this.shortenerService.findByShortUrl(shortUrl);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateShortenerDto: UpdateShortenerDto) {
+  @Patch(":id")
+  update(
+    @Param("id") id: string,
+    @Body() updateShortenerDto: UpdateShortenerDto,
+  ) {
     return this.shortenerService.update(id, updateShortenerDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
+  @Delete(":id")
+  remove(@Param("id") id: string) {
     return this.shortenerService.remove(id);
   }
 }

@@ -1,5 +1,5 @@
-
-export class CreateShortenerDto {  
-    originalUrl: string;
-    userId: string;
+export class CreateShortenerDto {
+  originalUrl!: string;
+  userId!: string;
+  siteName?: string;
 }
