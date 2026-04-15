@@ -9,6 +9,7 @@ import * as https from "https";
 import * as dotenv from "dotenv";
 import { ConfigService } from "@nestjs/config";
 import * as he from "he";
+import { buildSort, paginateModel } from "../common/pagination";
 dotenv.config();
 
 @Injectable()
@@ -29,8 +30,6 @@ export class ShortenerService {
     );
 
     const shortUrl = await this.generateUniqueShortUrl(shortUrlLength);
-    const siteName =
-      createShortenerDto.siteName ?? (await this.fetchPageTitle(originalUrl));
 
     const expirationDate = new Date();
     expirationDate.setMinutes(
@@ -40,14 +39,29 @@ export class ShortenerService {
     const shortener = new this.shortenerModel({
       originalUrl,
       shortUrl,
-      siteName,
+      siteName: createShortenerDto.siteName ?? null,
       clicks: 0,
       status: "active",
       expiresAt: expirationDate,
       userId: createShortenerDto.userId ?? null,
     });
 
-    return shortener.save();
+    const saved = await shortener.save();
+
+    if (!createShortenerDto.siteName) {
+      this.fetchPageTitle(originalUrl, 0, 3000)
+        .then((siteName) => {
+          if (siteName) {
+            return this.shortenerModel
+              .findByIdAndUpdate(saved._id, { siteName }, { new: true })
+              .exec();
+          }
+          return null;
+        })
+        .catch(() => null);
+    }
+
+    return saved;
   }
 
   findAll() {
@@ -58,13 +72,75 @@ export class ShortenerService {
     return this.shortenerModel.findById(id).exec();
   }
 
-  findByUserId(userId: string) {
-    return this.shortenerModel.find({ userId }).exec();
+  private buildUserQuery(userId: string, search?: string, status?: string) {
+    const query: any = { userId };
+
+    if (search) {
+      const regex = { $regex: search, $options: "i" };
+      query.$or = [
+        { siteName: regex },
+        { originalUrl: regex },
+        { shortUrl: regex },
+      ];
+    }
+
+    if (status && status !== "all") {
+      if (status === "valid") {
+        query.status = "active";
+        query.expiresAt = { $gt: new Date() };
+      } else if (status === "expired") {
+        query.expiresAt = { $lte: new Date() };
+        query.status = { $ne: "disabled" };
+      } else if (status === "disabled") {
+        query.status = "disabled";
+      }
+    }
+
+    return query;
+  }
+
+  private buildSort(sortBy = "createdAt", sortOrder = "desc") {
+    const sort: any = {};
+    sort[sortBy] = sortOrder === "asc" ? 1 : -1;
+    return sort;
+  }
+
+  private paginateQuery(query: any, sort: any, page = 1, limit = 5) {
+    const skip = (page - 1) * limit;
+    return this.shortenerModel
+      .find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .exec();
+  }
+
+  findByUserId(
+    userId: string,
+    search?: string,
+    status?: string,
+    sortBy = "createdAt",
+    sortOrder = "desc",
+    page = 1,
+    limit = 5,
+  ) {
+    const query = this.buildUserQuery(userId, search, status);
+    const sort = this.buildSort(sortBy, sortOrder);
+    return this.paginateQuery(query, sort, page, limit);
+  }
+
+  async countByUserId(userId: string, search?: string, status?: string) {
+    const query = this.buildUserQuery(userId, search, status);
+    return this.shortenerModel.countDocuments(query).exec();
   }
 
   async findByShortUrl(shortUrl: string) {
     return this.shortenerModel
-      .findOneAndUpdate({ shortUrl }, { $inc: { clicks: 1 } }, { new: true })
+      .findOneAndUpdate(
+        { shortUrl, status: "active", expiresAt: { $gt: new Date() } },
+        { $inc: { clicks: 1 } },
+        { new: true },
+      )
       .exec();
   }
 
@@ -100,6 +176,7 @@ export class ShortenerService {
   private async fetchPageTitle(
     url: string,
     redirectCount = 0,
+    timeoutMs = 3000,
   ): Promise<string | null> {
     if (redirectCount > 5) return null;
 
@@ -109,16 +186,33 @@ export class ShortenerService {
       const requestLib = parsedUrl.protocol === "https:" ? https : http;
 
       return await new Promise((resolve) => {
-        const req = requestLib.get(
+        let timedOut = false;
+        let req: http.ClientRequest;
+
+        const timer = setTimeout(() => {
+          timedOut = true;
+          if (req) {
+            req.destroy();
+          }
+          resolve(null);
+        }, timeoutMs);
+
+        req = requestLib.get(
           normalizedUrl,
           {
             headers: {
               "User-Agent":
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
             },
-            timeout: 5000,
+            timeout: timeoutMs,
           },
           (res) => {
+            if (timedOut) {
+              res.destroy();
+              return;
+            }
+
+            clearTimeout(timer);
             const statusCode = res.statusCode ?? 0;
 
             // redirect
@@ -128,7 +222,9 @@ export class ShortenerService {
                 normalizedUrl,
               ).toString();
               res.destroy();
-              this.fetchPageTitle(nextUrl, redirectCount + 1).then(resolve);
+              this.fetchPageTitle(nextUrl, redirectCount + 1, timeoutMs).then(
+                resolve,
+              );
               return;
             }
 
@@ -148,7 +244,11 @@ export class ShortenerService {
             });
 
             res.on("end", () => {
-              // og:title first
+              if (timedOut) {
+                resolve(null);
+                return;
+              }
+
               const ogMatch = html.match(
                 /<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i,
               );
@@ -159,14 +259,17 @@ export class ShortenerService {
               }
 
               const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-
               resolve(match ? he.decode(match[1].trim()) : null);
             });
           },
         );
 
-        req.on("error", () => resolve(null));
+        req.on("error", () => {
+          clearTimeout(timer);
+          resolve(null);
+        });
         req.on("timeout", () => {
+          clearTimeout(timer);
           req.destroy();
           resolve(null);
         });

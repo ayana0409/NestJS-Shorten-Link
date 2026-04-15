@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query,
 } from "@nestjs/common";
 import { AccountService } from "./account.service";
 import { CreateAccountDto } from "./dto/create-account.dto";
@@ -34,16 +35,56 @@ export class AccountController {
 
   @Get("admin")
   @UseGuards(AuthGuard, AdminGuard)
-  findAllAdmin() {
-    return this.accountService.findAll();
+  async findAllAdmin(
+    @Query("search") search?: string,
+    @Query("sortBy") sortBy = "createdAt",
+    @Query("sortOrder") sortOrder = "desc",
+    @Query("page") page = "1",
+    @Query("limit") limit = "5",
+  ) {
+    const pageNumber = Number(page) || 1;
+    const limitNumber = Number(limit) || 5;
+    const { accounts, total } = await this.accountService.findAllPaginated(
+      search,
+      sortBy,
+      sortOrder,
+      pageNumber,
+      limitNumber,
+    );
+    const totalPages = Math.max(1, Math.ceil(total / limitNumber));
+    return { data: accounts, page: pageNumber, totalPages };
   }
 
   @Get("admin/:id")
   @UseGuards(AuthGuard, AdminGuard)
-  async findOneAdmin(@Param("id") id: string) {
+  async findOneAdmin(
+    @Param("id") id: string,
+    @Query("search") search?: string,
+    @Query("status") status?: string,
+    @Query("sortBy") sortBy = "createdAt",
+    @Query("sortOrder") sortOrder = "desc",
+    @Query("page") page = "1",
+    @Query("limit") limit = "5",
+  ) {
+    const pageNumber = Number(page) || 1;
+    const limitNumber = Number(limit) || 5;
     const account = await this.accountService.findOne(id);
-    const links = await this.shortenerService.findByUserId(id);
-    return { account, links };
+    const links = await this.shortenerService.findByUserId(
+      id,
+      search,
+      status,
+      sortBy,
+      sortOrder,
+      pageNumber,
+      limitNumber,
+    );
+    const totalLinks = await this.shortenerService.countByUserId(
+      id,
+      search,
+      status,
+    );
+    const totalPages = Math.max(1, Math.ceil(totalLinks / limitNumber));
+    return { account, links, page: pageNumber, totalPages };
   }
 
   @Get()

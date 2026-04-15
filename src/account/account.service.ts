@@ -11,6 +11,11 @@ import { Model } from "mongoose";
 import * as bcrypt from "bcrypt";
 import { ResponseAccountDto } from "./dto/response-account.dto";
 import { AccountRole } from "./account-role.enum";
+import {
+  buildSearchQuery,
+  buildSort,
+  paginateModel,
+} from "../common/pagination";
 
 @Injectable()
 export class AccountService {
@@ -46,6 +51,24 @@ export class AccountService {
 
   async findAll(): Promise<ResponseAccountDto[]> {
     return this.accountModel.find().select("-password").exec();
+  }
+
+  async findAllPaginated(
+    search?: string,
+    sortBy = "createdAt",
+    sortOrder = "desc",
+    page = 1,
+    limit = 5,
+  ) {
+    const query = buildSearchQuery(search, ["username", "fullname"]);
+    const sort = buildSort(sortBy, sortOrder);
+
+    const [accounts, total] = await Promise.all([
+      paginateModel(this.accountModel, query, sort, page, limit, "-password"),
+      this.accountModel.countDocuments(query).exec(),
+    ]);
+
+    return { accounts, total };
   }
 
   async findOne(id: string): Promise<ResponseAccountDto> {

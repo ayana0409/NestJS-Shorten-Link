@@ -8,6 +8,8 @@ import {
   Delete,
   UseGuards,
   Request,
+  Query,
+  NotFoundException,
 } from "@nestjs/common";
 import { ShortenerService } from "./shortener.service";
 import { CreateShortenerDto } from "./dto/create-shortener.dto";
@@ -32,13 +34,46 @@ export class ShortenerController {
 
   @Get("user")
   @UseGuards(AuthGuard)
-  findByUserId(@Request() req) {
-    return this.shortenerService.findByUserId(req.user._id);
+  async findByUserId(
+    @Request() req,
+    @Query("search") search?: string,
+    @Query("status") status?: string,
+    @Query("sortBy") sortBy = "createdAt",
+    @Query("sortOrder") sortOrder = "desc",
+    @Query("page") page = "1",
+    @Query("limit") limit = "5",
+  ) {
+    const pageNumber = Number(page) || 1;
+    const limitNumber = Number(limit) || 5;
+    const links = await this.shortenerService.findByUserId(
+      req.user._id,
+      search,
+      status,
+      sortBy,
+      sortOrder,
+      pageNumber,
+      limitNumber,
+    );
+    const totalLinks = await this.shortenerService.countByUserId(
+      req.user._id,
+      search,
+      status,
+    );
+    const totalPages = Math.max(1, Math.ceil(totalLinks / limitNumber));
+    return {
+      data: links,
+      page: pageNumber,
+      totalPages,
+    };
   }
 
   @Get(":shortUrl")
-  findByShortUrl(@Param("shortUrl") shortUrl: string) {
-    return this.shortenerService.findByShortUrl(shortUrl);
+  async findByShortUrl(@Param("shortUrl") shortUrl: string) {
+    const result = await this.shortenerService.findByShortUrl(shortUrl);
+    if (!result) {
+      throw new NotFoundException("Short link not found or expired");
+    }
+    return result;
   }
 
   @Patch(":id")
