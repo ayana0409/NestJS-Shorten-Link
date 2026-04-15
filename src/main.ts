@@ -11,11 +11,17 @@ async function bootstrap() {
   app.useGlobalInterceptors(new LoggingInterceptor());
   const configService = app.get(ConfigService);
 
+  const origins = configService.get<string>("CORS_ORIGIN", "").split(";");
   app.enableCors({
-    origin: configService.get<string>("CORS_ORIGIN", "http://localhost:3000"),
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-    allowedHeaders:
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true); // Postman / server-to-server
+
+      if (origins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"), false);
+    },
     credentials: true,
   });
 
