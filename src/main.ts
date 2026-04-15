@@ -26,8 +26,11 @@ async function bootstrap() {
     configService.get<string>("ADMIN_PASSWORD", "Passw0rd@123"),
   );
 
-  const port = Number(configService.get<string>("PORT", "3000"));
+  // const port = Number(configService.get<string>("PORT", "3000"));
+  const port = process.env.PORT || 3000;
+  await app.listen(port, "0.0.0.0");
 
+  console.log("Running on port", port);
   await app.listen(port);
 }
 bootstrap();
