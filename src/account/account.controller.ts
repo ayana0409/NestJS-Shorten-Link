@@ -98,6 +98,12 @@ export class AccountController {
     return this.accountService.findOne(id);
   }
 
+  @Patch(":id/active")
+  @UseGuards(AuthGuard, AdminGuard)
+  setActive(@Param("id") id: string, @Body("isActive") isActive: boolean) {
+    return this.accountService.setActive(id, isActive);
+  }
+
   @Patch(":id")
   @UseGuards(AuthGuard, AdminGuard)
   update(@Param("id") id: string, @Body() updateAccountDto: UpdateAccountDto) {

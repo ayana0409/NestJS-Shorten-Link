@@ -5,4 +5,5 @@ export class CreateAccountDto {
   password!: string;
   fullname!: string;
   role?: AccountRole;
+  isActive?: boolean;
 }

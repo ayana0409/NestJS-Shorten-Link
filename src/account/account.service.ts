@@ -38,6 +38,7 @@ export class AccountService {
     const hashedPassword = await bcrypt.hash(createAccountDto.password, salt);
     createAccountDto.password = hashedPassword;
     createAccountDto.role = createAccountDto.role ?? AccountRole.USER;
+    createAccountDto.isActive = createAccountDto.isActive ?? true;
 
     const account = new this.accountModel(createAccountDto);
     const savedAccount = await account.save();
@@ -46,6 +47,7 @@ export class AccountService {
       username: savedAccount.username,
       fullname: savedAccount.fullname,
       role: savedAccount.role,
+      isActive: savedAccount.isActive,
     };
   }
 
@@ -141,6 +143,18 @@ export class AccountService {
 
     const account = await this.accountModel
       .findByIdAndUpdate(id, updateAccountDto, { new: true })
+      .select("-password")
+      .exec();
+    if (!account) {
+      throw new NotFoundException(`Account with ID ${id} not found`);
+    }
+    return account;
+  }
+
+  async setActive(id: string, isActive: boolean): Promise<Account> {
+    const account = await this.accountModel
+      .findByIdAndUpdate(id, { isActive }, { new: true })
+      .select("-password")
       .exec();
     if (!account) {
       throw new NotFoundException(`Account with ID ${id} not found`);

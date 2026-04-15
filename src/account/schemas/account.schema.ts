@@ -17,6 +17,9 @@ export class Account {
 
   @Prop({ type: String, enum: AccountRole, default: AccountRole.USER })
   role!: AccountRole;
+
+  @Prop({ default: true })
+  isActive!: boolean;
 }
 
 export const AccountSchema = SchemaFactory.createForClass(Account);

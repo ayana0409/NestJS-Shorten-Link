@@ -4,4 +4,5 @@ export class ResponseAccountDto {
   username!: string;
   fullname!: string;
   role!: AccountRole;
+  isActive!: boolean;
 }

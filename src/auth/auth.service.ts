@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { Account, AccountDocument } from "../account/schemas/account.schema";
 import { LoginDto } from "./dto/login.dto";
 import { AccountService } from "../account/account.service";
@@ -13,8 +17,10 @@ export class AuthService {
   ) {}
 
   async validateUser(user: LoginDto): Promise<AccountDocument | null> {
-    const account = await this.accountService.findOneByUsername(user.username);
-    if (!account) {
+    let account: AccountDocument;
+    try {
+      account = await this.accountService.findOneByUsername(user.username);
+    } catch {
       throw new UnauthorizedException("Invalid username or password");
     }
 
@@ -26,6 +32,11 @@ export class AuthService {
     if (!isPasswordValid) {
       throw new UnauthorizedException("Invalid username or password");
     }
+
+    if (!account.isActive) {
+      throw new ForbiddenException("Tài khoản đã bị khóa vĩnh viễn");
+    }
+
     return account;
   }
 
