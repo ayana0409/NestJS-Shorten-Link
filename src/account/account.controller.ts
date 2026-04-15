@@ -24,6 +24,7 @@ export class AccountController {
   ) {}
 
   @Post()
+  @UseGuards(AuthGuard, AdminGuard)
   create(@Body() createAccountDto: CreateAccountDto) {
     return this.accountService.create(createAccountDto);
   }
@@ -98,11 +99,13 @@ export class AccountController {
   }
 
   @Patch(":id")
+  @UseGuards(AuthGuard, AdminGuard)
   update(@Param("id") id: string, @Body() updateAccountDto: UpdateAccountDto) {
     return this.accountService.update(id, updateAccountDto);
   }
 
   @Delete(":id")
+  @UseGuards(AuthGuard, AdminGuard)
   remove(@Param("id") id: string) {
     return this.accountService.remove(id);
   }

@@ -120,6 +120,25 @@ export class AccountService {
     id: string,
     updateAccountDto: UpdateAccountDto,
   ): Promise<Account> {
+    if (updateAccountDto.username) {
+      const existingAccount = await this.accountModel
+        .findOne({ username: updateAccountDto.username })
+        .exec();
+      if (existingAccount && existingAccount.id !== id) {
+        throw new BadRequestException(
+          `Account with username ${updateAccountDto.username} already exists`,
+        );
+      }
+    }
+
+    if (updateAccountDto.password) {
+      const salt = await bcrypt.genSalt(10);
+      updateAccountDto.password = await bcrypt.hash(
+        updateAccountDto.password,
+        salt,
+      );
+    }
+
     const account = await this.accountModel
       .findByIdAndUpdate(id, updateAccountDto, { new: true })
       .exec();
