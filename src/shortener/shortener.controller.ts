@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -22,9 +23,54 @@ export class ShortenerController {
 
   @Post()
   @UseGuards(AuthGuard)
-  create(@Request() req, @Body() createShortenerDto: CreateShortenerDto) {
-    createShortenerDto.userId = req.user._id;
+  async create(@Request() req, @Body() createShortenerDto: CreateShortenerDto) {
+    const userId = req.user?._id;
+    createShortenerDto.userId = userId;
+
+    if (req.user?.role !== "admin") {
+      const limit = this.shortenerService.getDailyShortenerLimit();
+      const used = await this.shortenerService.countDailyCreatedByUser(userId);
+      if (used >= limit) {
+        throw new BadRequestException(
+          `Bạn đã đạt giới hạn ${limit} liên kết hôm nay. Vui lòng thử lại vào ngày mai.`,
+        );
+      }
+    }
+
     return this.shortenerService.create(createShortenerDto);
+  }
+
+  @Get("quota")
+  @UseGuards(AuthGuard)
+  async getQuota(@Request() req) {
+    const username = req.user?.username || "Người dùng";
+    const role = req.user?.role || "user";
+
+    if (role === "admin") {
+      return {
+        username,
+        role,
+        unlimited: true,
+        limit: null,
+        used: 0,
+        remaining: null,
+      };
+    }
+
+    const limit = this.shortenerService.getDailyShortenerLimit();
+    const used = await this.shortenerService.countDailyCreatedByUser(
+      req.user?._id,
+    );
+    const remaining = Math.max(limit - used, 0);
+
+    return {
+      username,
+      role,
+      unlimited: false,
+      limit,
+      used,
+      remaining,
+    };
   }
 
   @Get()

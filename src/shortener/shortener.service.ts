@@ -135,6 +135,25 @@ export class ShortenerService {
     return this.shortenerModel.countDocuments(query).exec();
   }
 
+  getDailyShortenerLimit(): number {
+    return Number(this.configService.get<string>("DAILY_SHORTEN_LIMIT", "10"));
+  }
+
+  async countDailyCreatedByUser(userId: string): Promise<number> {
+    if (!userId) {
+      return 0;
+    }
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    return this.shortenerModel
+      .countDocuments({
+        userId,
+        createdAt: { $gte: startOfToday },
+      })
+      .exec();
+  }
+
   async findByShortUrl(shortUrl: string) {
     return this.shortenerModel
       .findOneAndUpdate(
