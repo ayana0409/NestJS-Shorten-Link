@@ -7,8 +7,8 @@ import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.useGlobalFilters(new AllExceptionsFilter());
-  app.useGlobalInterceptors(new LoggingInterceptor());
+  app.useGlobalFilters(app.get(AllExceptionsFilter));
+  app.useGlobalInterceptors(app.get(LoggingInterceptor));
   const configService = app.get(ConfigService);
 
   const origins = configService.get<string>("CORS_ORIGIN", "").split(";");

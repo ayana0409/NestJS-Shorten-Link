@@ -6,6 +6,9 @@ import { ShortenerModule } from "./shortener/shortener.module";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { AccountModule } from "./account/account.module";
 import { AuthModule } from "./auth/auth.module";
+import { AuditLogModule } from "./audit-log/audit-log.module";
+import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
+import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
 
 @Module({
   imports: [
@@ -27,8 +30,9 @@ import { AuthModule } from "./auth/auth.module";
     ShortenerModule,
     AccountModule,
     AuthModule,
+    AuditLogModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, LoggingInterceptor, AllExceptionsFilter],
 })
 export class AppModule {}
