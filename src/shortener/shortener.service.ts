@@ -154,6 +154,77 @@ export class ShortenerService {
       .exec();
   }
 
+  async getLinkCreationStats(
+    userId: string | null,
+    range = "daily",
+    from?: string,
+    to?: string,
+  ) {
+    const now = new Date();
+
+    const endDate = to ? new Date(to) : now;
+    const startDate = from
+      ? new Date(from)
+      : new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    if (Number.isNaN(startDate.getTime())) {
+      throw new Error("Invalid from date");
+    }
+    if (Number.isNaN(endDate.getTime())) {
+      throw new Error("Invalid to date");
+    }
+
+    const match: any = {};
+    if (userId) {
+      match.userId = userId;
+    }
+    if (startDate || endDate) {
+      match.createdAt = {};
+      if (startDate) {
+        match.createdAt.$gte = startDate;
+      }
+      if (endDate) {
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        match.createdAt.$lte = endOfDay;
+      }
+    }
+
+    const summaryField =
+      range === "weekly"
+        ? {
+            $dateToString: {
+              format: "%G-W%V",
+              date: "$createdAt",
+              timezone: "UTC",
+            },
+          }
+        : {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$createdAt",
+              timezone: "UTC",
+            },
+          };
+
+    const result = await this.shortenerModel
+      .aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: summaryField,
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $sort: { _id: 1 },
+        },
+      ])
+      .exec();
+
+    return result.map((item) => ({ label: item._id, value: item.count }));
+  }
+
   async findByShortUrl(shortUrl: string) {
     return this.shortenerModel
       .findOneAndUpdate(

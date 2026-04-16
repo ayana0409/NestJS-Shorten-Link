@@ -16,6 +16,7 @@ import { ShortenerService } from "./shortener.service";
 import { CreateShortenerDto } from "./dto/create-shortener.dto";
 import { UpdateShortenerDto } from "./dto/update-shortener.dto";
 import { AuthGuard } from "../auth/auth.guard";
+import { AdminGuard } from "../auth/admin.guard";
 
 @Controller("shortener")
 export class ShortenerController {
@@ -71,6 +72,32 @@ export class ShortenerController {
       used,
       remaining,
     };
+  }
+
+  @Get("analytics")
+  @UseGuards(AuthGuard)
+  async getAnalytics(
+    @Request() req,
+    @Query("range") range = "daily",
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+  ) {
+    return this.shortenerService.getLinkCreationStats(
+      req.user?._id,
+      range,
+      from,
+      to,
+    );
+  }
+
+  @Get("analytics/admin")
+  @UseGuards(AuthGuard, AdminGuard)
+  async getAdminAnalytics(
+    @Query("range") range = "daily",
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+  ) {
+    return this.shortenerService.getLinkCreationStats(null, range, from, to);
   }
 
   @Get()
