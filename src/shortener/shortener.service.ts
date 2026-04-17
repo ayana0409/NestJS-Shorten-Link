@@ -1,4 +1,8 @@
-import { Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose/dist";
 import { CreateShortenerDto } from "./dto/create-shortener.dto";
 import { UpdateShortenerDto } from "./dto/update-shortener.dto";
@@ -6,6 +10,7 @@ import { Shortener } from "./schema/shortener.schema";
 import { Model } from "mongoose";
 import { ConfigService } from "@nestjs/config";
 import * as dotenv from "dotenv";
+import * as bcrypt from "bcrypt";
 import axios from "axios";
 import * as cheerio from "cheerio";
 import * as he from "he";
@@ -37,10 +42,15 @@ export class ShortenerService {
       expirationDate.getMinutes() + shortUrlExpirationMinutes,
     );
 
+    const passwordHash = createShortenerDto.password
+      ? await bcrypt.hash(createShortenerDto.password, await bcrypt.genSalt(10))
+      : undefined;
+
     const shortener = new this.shortenerModel({
       originalUrl,
       shortUrl,
       siteName: createShortenerDto.siteName ?? null,
+      password: passwordHash,
       clicks: 0,
       status: "active",
       expiresAt: expirationDate,
@@ -65,12 +75,27 @@ export class ShortenerService {
     return saved;
   }
 
-  findAll() {
-    return this.shortenerModel.find().exec();
+  async findAll() {
+    const docs = await this.shortenerModel
+      .find()
+      .select("+password")
+      .lean()
+      .exec();
+    return docs.map(({ password, ...doc }) => ({
+      ...doc,
+      passwordProtected: Boolean(password),
+    }));
   }
 
-  findOne(id: string) {
-    return this.shortenerModel.findById(id).exec();
+  async findOne(id: string) {
+    const doc = await this.shortenerModel
+      .findById(id)
+      .select("+password")
+      .lean()
+      .exec();
+    if (!doc) return null;
+    const { password, ...result } = doc;
+    return { ...result, passwordProtected: Boolean(password) };
   }
 
   private buildUserQuery(userId: string, search?: string, status?: string) {
@@ -116,7 +141,7 @@ export class ShortenerService {
       .exec();
   }
 
-  findByUserId(
+  async findByUserId(
     userId: string,
     search?: string,
     status?: string,
@@ -127,7 +152,19 @@ export class ShortenerService {
   ) {
     const query = this.buildUserQuery(userId, search, status);
     const sort = this.buildSort(sortBy, sortOrder);
-    return this.paginateQuery(query, sort, page, limit);
+    const links = await this.shortenerModel
+      .find(query)
+      .select("+password")
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean()
+      .exec();
+
+    return links.map(({ password, ...link }) => ({
+      ...link,
+      passwordProtected: Boolean(password),
+    }));
   }
 
   async countByUserId(userId: string, search?: string, status?: string) {
@@ -226,16 +263,61 @@ export class ShortenerService {
   }
 
   async findByShortUrl(shortUrl: string) {
-    return this.shortenerModel
-      .findOneAndUpdate(
-        { shortUrl, status: "active", expiresAt: { $gt: new Date() } },
-        { $inc: { clicks: 1 } },
-        { new: true },
-      )
+    const doc = await this.shortenerModel
+      .findOne({ shortUrl, status: "active", expiresAt: { $gt: new Date() } })
+      .select("+password")
+      .lean()
       .exec();
+    if (!doc) return null;
+    const { password, ...result } = doc;
+    return {
+      ...result,
+      passwordProtected: Boolean(password),
+    };
+  }
+
+  async validateAndIncrementClick(shortUrl: string, password?: string) {
+    const doc = await this.shortenerModel
+      .findOne({ shortUrl, status: "active", expiresAt: { $gt: new Date() } })
+      .select("+password")
+      .exec();
+
+    if (!doc) {
+      throw new NotFoundException("Short link not found or expired");
+    }
+
+    if (doc.password) {
+      if (!password) {
+        throw new BadRequestException(
+          "Vui lòng nhập mật khẩu để truy cập liên kết này",
+        );
+      }
+      const isMatch = await bcrypt.compare(password, doc.password);
+      if (!isMatch) {
+        throw new BadRequestException("Mật khẩu không đúng");
+      }
+    }
+
+    const updated = await this.shortenerModel
+      .findByIdAndUpdate(doc._id, { $inc: { clicks: 1 } }, { new: true })
+      .select("-password")
+      .lean()
+      .exec();
+
+    return {
+      ...(updated || {}),
+      originalUrl: doc.originalUrl,
+      passwordProtected: Boolean(doc.password),
+    };
   }
 
   async update(id: string, updateShortenerDto: UpdateShortenerDto) {
+    if (updateShortenerDto.password) {
+      updateShortenerDto.password = await bcrypt.hash(
+        updateShortenerDto.password,
+        await bcrypt.genSalt(10),
+      );
+    }
     return this.shortenerModel
       .findByIdAndUpdate(id, updateShortenerDto, { new: true })
       .exec();

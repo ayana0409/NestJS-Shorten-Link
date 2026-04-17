@@ -149,6 +149,14 @@ export class ShortenerController {
     return result;
   }
 
+  @Post(":shortUrl/click")
+  async validateClick(
+    @Param("shortUrl") shortUrl: string,
+    @Body("password") password?: string,
+  ) {
+    return this.shortenerService.validateAndIncrementClick(shortUrl, password);
+  }
+
   @Patch(":id")
   update(
     @Param("id") id: string,

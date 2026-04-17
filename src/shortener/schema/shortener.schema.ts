@@ -11,6 +11,9 @@ export class Shortener {
   @Prop({ required: false })
   siteName?: string;
 
+  @Prop({ required: false, select: false })
+  password?: string;
+
   @Prop({ type: Number, default: 0 })
   clicks!: number;
 
