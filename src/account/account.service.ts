@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -61,8 +62,15 @@ export class AccountService {
     sortOrder = "desc",
     page = 1,
     limit = 5,
+    requesterRole?: string,
   ) {
     const query = buildSearchQuery(search, ["username", "fullname"]);
+
+    // Manager can only see user accounts, not admin or other managers
+    if (requesterRole === "manager") {
+      query.role = AccountRole.USER;
+    }
+
     const sort = buildSort(sortBy, sortOrder);
 
     const [accounts, total] = await Promise.all([
@@ -81,6 +89,26 @@ export class AccountService {
     if (!account) {
       throw new NotFoundException(`Account with ID ${id} not found`);
     }
+    return account;
+  }
+
+  async findOneFiltered(
+    id: string,
+    requesterRole?: string,
+  ): Promise<ResponseAccountDto> {
+    const account = await this.accountModel
+      .findById(id)
+      .select("-password")
+      .exec();
+    if (!account) {
+      throw new NotFoundException(`Account with ID ${id} not found`);
+    }
+
+    // Manager can only access user accounts
+    if (requesterRole === "manager" && account.role !== AccountRole.USER) {
+      throw new ForbiddenException("You can only access user accounts");
+    }
+
     return account;
   }
 
@@ -149,6 +177,34 @@ export class AccountService {
       throw new NotFoundException(`Account with ID ${id} not found`);
     }
     return account;
+  }
+
+  async updateFiltered(
+    id: string,
+    updateAccountDto: UpdateAccountDto,
+    requesterRole?: string,
+  ): Promise<Account> {
+    // Manager cannot update role
+    if (requesterRole === "manager" && updateAccountDto.role) {
+      throw new ForbiddenException("Managers cannot change user roles");
+    }
+
+    // Get the account to check its role
+    const existingAccount = await this.accountModel.findById(id).exec();
+    if (!existingAccount) {
+      throw new NotFoundException(`Account with ID ${id} not found`);
+    }
+
+    // Manager can only update user accounts
+    if (
+      requesterRole === "manager" &&
+      existingAccount.role !== AccountRole.USER
+    ) {
+      throw new ForbiddenException("You can only update user accounts");
+    }
+
+    // Call the standard update method
+    return this.update(id, updateAccountDto);
   }
 
   async setActive(id: string, isActive: boolean): Promise<Account> {

@@ -8,12 +8,14 @@ import {
   Delete,
   UseGuards,
   Query,
+  Request,
 } from "@nestjs/common";
 import { AccountService } from "./account.service";
 import { CreateAccountDto } from "./dto/create-account.dto";
 import { UpdateAccountDto } from "./dto/update-account.dto";
 import { AuthGuard } from "../auth/auth.guard";
 import { AdminGuard } from "../auth/admin.guard";
+import { ManagerGuard } from "../auth/manager.guard";
 import { ShortenerService } from "../shortener/shortener.service";
 
 @Controller("account")
@@ -35,8 +37,9 @@ export class AccountController {
   }
 
   @Get("admin")
-  @UseGuards(AuthGuard, AdminGuard)
+  @UseGuards(AuthGuard, ManagerGuard)
   async findAllAdmin(
+    @Request() req,
     @Query("search") search?: string,
     @Query("sortBy") sortBy = "createdAt",
     @Query("sortOrder") sortOrder = "desc",
@@ -51,14 +54,16 @@ export class AccountController {
       sortOrder,
       pageNumber,
       limitNumber,
+      req.user?.role,
     );
     const totalPages = Math.max(1, Math.ceil(total / limitNumber));
     return { data: accounts, page: pageNumber, totalPages };
   }
 
   @Get("admin/:id")
-  @UseGuards(AuthGuard, AdminGuard)
+  @UseGuards(AuthGuard, ManagerGuard)
   async findOneAdmin(
+    @Request() req,
     @Param("id") id: string,
     @Query("search") search?: string,
     @Query("status") status?: string,
@@ -69,7 +74,10 @@ export class AccountController {
   ) {
     const pageNumber = Number(page) || 1;
     const limitNumber = Number(limit) || 5;
-    const account = await this.accountService.findOne(id);
+    const account = await this.accountService.findOneFiltered(
+      id,
+      req.user?.role,
+    );
     const links = await this.shortenerService.findByUserId(
       id,
       search,
@@ -105,9 +113,17 @@ export class AccountController {
   }
 
   @Patch(":id")
-  @UseGuards(AuthGuard, AdminGuard)
-  update(@Param("id") id: string, @Body() updateAccountDto: UpdateAccountDto) {
-    return this.accountService.update(id, updateAccountDto);
+  @UseGuards(AuthGuard, ManagerGuard)
+  update(
+    @Request() req,
+    @Param("id") id: string,
+    @Body() updateAccountDto: UpdateAccountDto,
+  ) {
+    return this.accountService.updateFiltered(
+      id,
+      updateAccountDto,
+      req.user?.role,
+    );
   }
 
   @Delete(":id")
