@@ -29,7 +29,7 @@ export class ShortenerController {
     createShortenerDto.userId = userId;
 
     if (req.user?.role !== "admin") {
-      const limit = this.shortenerService.getDailyShortenerLimit();
+      const limit = await this.shortenerService.getDailyShortenerLimit();
       const used = await this.shortenerService.countDailyCreatedByUser(userId);
       if (used >= limit) {
         throw new BadRequestException(
@@ -58,7 +58,7 @@ export class ShortenerController {
       };
     }
 
-    const limit = this.shortenerService.getDailyShortenerLimit();
+    const limit = await this.shortenerService.getDailyShortenerLimit();
     const used = await this.shortenerService.countDailyCreatedByUser(
       req.user?._id,
     );

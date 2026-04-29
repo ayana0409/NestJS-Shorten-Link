@@ -14,6 +14,7 @@ import * as bcrypt from "bcrypt";
 import axios from "axios";
 import * as cheerio from "cheerio";
 import * as he from "he";
+import { ConfigManagerService } from "../config/config-manager.service";
 
 import { buildSort, paginateModel } from "../common/pagination";
 dotenv.config();
@@ -23,16 +24,19 @@ export class ShortenerService {
   constructor(
     @InjectModel(Shortener.name) private shortenerModel: Model<Shortener>,
     private configService: ConfigService,
+    private configManagerService: ConfigManagerService,
   ) {}
 
   async create(createShortenerDto: CreateShortenerDto) {
     const { originalUrl } = createShortenerDto;
 
-    const shortUrlLength = Number(
-      this.configService.get<string>("SHORT_URL_LENGTH", "6"),
+    const shortUrlLength = await this.configManagerService.getNumberValue(
+      "SHORT_URL_LENGTH",
+      6,
     );
-    const shortUrlExpirationMinutes = Number(
-      this.configService.get<string>("SHORT_URL_EXPIRATION_DAYS", "30"),
+    const shortUrlExpirationMinutes = await this.configManagerService.getNumberValue(
+      "SHORT_URL_EXPIRATION_DAYS",
+      300,
     );
 
     const shortUrl = await this.generateUniqueShortUrl(shortUrlLength);
@@ -188,8 +192,8 @@ export class ShortenerService {
     return this.shortenerModel.countDocuments(query).exec();
   }
 
-  getDailyShortenerLimit(): number {
-    return Number(this.configService.get<string>("DAILY_SHORTEN_LIMIT", "10"));
+  async getDailyShortenerLimit(): Promise<number> {
+    return this.configManagerService.getNumberValue("DAILY_SHORTEN_LIMIT", 10);
   }
 
   async countDailyCreatedByUser(userId: string): Promise<number> {

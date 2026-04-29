@@ -4,12 +4,14 @@ import { ShortenerController } from "./shortener.controller";
 import { Shortener, ShortenerSchema } from "./schema/shortener.schema";
 import { MongooseModule } from "@nestjs/mongoose/dist/mongoose.module";
 import { AccountModule } from "../account/account.module";
+import { ConfigModule } from "../config/config.module";
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Shortener.name, schema: ShortenerSchema },
     ]),
+    ConfigModule,
     forwardRef(() => AccountModule),
   ],
   controllers: [ShortenerController],

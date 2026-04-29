@@ -9,6 +9,7 @@ import { AuthModule } from "./auth/auth.module";
 import { AuditLogModule } from "./audit-log/audit-log.module";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
+import { ConfigModule as SystemConfigModule } from "./config/config.module";
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
     AccountModule,
     AuthModule,
     AuditLogModule,
+    SystemConfigModule,
   ],
   controllers: [AppController],
   providers: [AppService, LoggingInterceptor, AllExceptionsFilter],
