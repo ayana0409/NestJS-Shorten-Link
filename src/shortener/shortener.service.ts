@@ -37,10 +37,19 @@ export class ShortenerService {
 
     const shortUrl = await this.generateUniqueShortUrl(shortUrlLength);
 
-    const expirationDate = new Date();
-    expirationDate.setMinutes(
-      expirationDate.getMinutes() + shortUrlExpirationMinutes,
-    );
+    let expirationDate: Date | undefined;
+
+    // Determine expiration date based on noExpiration flag and validityToDate
+    if (createShortenerDto.noExpiration) {
+      expirationDate = undefined;
+    } else if (createShortenerDto.validityToDate) {
+      expirationDate = new Date(createShortenerDto.validityToDate);
+    } else {
+      expirationDate = new Date();
+      expirationDate.setMinutes(
+        expirationDate.getMinutes() + shortUrlExpirationMinutes,
+      );
+    }
 
     const passwordHash = createShortenerDto.password
       ? await bcrypt.hash(createShortenerDto.password, await bcrypt.genSalt(10))
@@ -54,6 +63,9 @@ export class ShortenerService {
       clicks: 0,
       status: "active",
       expiresAt: expirationDate,
+      validityFromDate: createShortenerDto.validityFromDate ?? null,
+      validityToDate: createShortenerDto.validityToDate ?? null,
+      noExpiration: createShortenerDto.noExpiration ?? false,
       userId: createShortenerDto.userId ?? null,
     });
 
@@ -113,10 +125,14 @@ export class ShortenerService {
     if (status && status !== "all") {
       if (status === "valid") {
         query.status = "active";
-        query.expiresAt = { $gt: new Date() };
+        query.$or = [
+          { noExpiration: true },
+          { expiresAt: { $gt: new Date() } },
+        ];
       } else if (status === "expired") {
-        query.expiresAt = { $lte: new Date() };
         query.status = { $ne: "disabled" };
+        query.noExpiration = false;
+        query.expiresAt = { $lte: new Date() };
       } else if (status === "disabled") {
         query.status = "disabled";
       }
@@ -264,7 +280,11 @@ export class ShortenerService {
 
   async findByShortUrl(shortUrl: string) {
     const doc = await this.shortenerModel
-      .findOne({ shortUrl, status: "active", expiresAt: { $gt: new Date() } })
+      .findOne({
+        shortUrl,
+        status: "active",
+        $or: [{ noExpiration: true }, { expiresAt: { $gt: new Date() } }],
+      })
       .select("+password")
       .lean()
       .exec();
@@ -278,7 +298,11 @@ export class ShortenerService {
 
   async validateAndIncrementClick(shortUrl: string, password?: string) {
     const doc = await this.shortenerModel
-      .findOne({ shortUrl, status: "active", expiresAt: { $gt: new Date() } })
+      .findOne({
+        shortUrl,
+        status: "active",
+        $or: [{ noExpiration: true }, { expiresAt: { $gt: new Date() } }],
+      })
       .select("+password")
       .exec();
 

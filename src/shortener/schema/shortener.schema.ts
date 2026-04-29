@@ -20,6 +20,12 @@ export class Shortener {
   @Prop({ required: false })
   expiresAt?: Date;
 
+  @Prop({ required: false })
+  validityFromDate?: Date;
+
+  @Prop({ type: Boolean, default: false })
+  noExpiration!: boolean;
+
   @Prop({ enum: ["active", "expired", "disabled"], default: "active" })
   status!: string;
 

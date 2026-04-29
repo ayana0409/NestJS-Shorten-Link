@@ -3,4 +3,7 @@ export class CreateShortenerDto {
   userId!: string;
   siteName?: string;
   password?: string;
+  validityFromDate?: Date;
+  validityToDate?: Date;
+  noExpiration?: boolean;
 }
