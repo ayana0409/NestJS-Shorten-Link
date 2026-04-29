@@ -45,11 +45,13 @@ export class ShortenerController {
   @UseGuards(AuthGuard)
   async getQuota(@Request() req) {
     const username = req.user?.username || "Người dùng";
+    const fullName = req.user?.fullname || "Người dùng";
     const role = req.user?.role || "user";
 
     if (role === "admin") {
       return {
         username,
+        fullName,
         role,
         unlimited: true,
         limit: null,
@@ -66,6 +68,7 @@ export class ShortenerController {
 
     return {
       username,
+      fullName,
       role,
       unlimited: false,
       limit,
