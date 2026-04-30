@@ -16,11 +16,15 @@ import { ShortenerService } from "./shortener.service";
 import { CreateShortenerDto } from "./dto/create-shortener.dto";
 import { UpdateShortenerDto } from "./dto/update-shortener.dto";
 import { AuthGuard } from "../auth/auth.guard";
+import { AccountService } from "../account/account.service";
 import { AdminGuard } from "../auth/admin.guard";
 
 @Controller("shortener")
 export class ShortenerController {
-  constructor(private readonly shortenerService: ShortenerService) {}
+  constructor(
+    private readonly shortenerService: ShortenerService,
+    private readonly accountService: AccountService,
+  ) {}
 
   @Post()
   @UseGuards(AuthGuard)
@@ -29,7 +33,7 @@ export class ShortenerController {
     createShortenerDto.userId = userId;
 
     if (req.user?.role !== "admin") {
-      const limit = await this.shortenerService.getDailyShortenerLimit();
+      const limit = await this.shortenerService.getDailyShortenerLimit(userId);
       const used = await this.shortenerService.countDailyCreatedByUser(userId);
       if (used >= limit) {
         throw new BadRequestException(
@@ -48,11 +52,14 @@ export class ShortenerController {
     const fullName = req.user?.fullname || "Người dùng";
     const role = req.user?.role || "user";
 
+    const account = await this.accountService.findOne(req.user?._id);
+
     if (role === "admin") {
       return {
         username,
         fullName,
         role,
+        level: account.level,
         unlimited: true,
         limit: null,
         used: 0,
@@ -60,7 +67,9 @@ export class ShortenerController {
       };
     }
 
-    const limit = await this.shortenerService.getDailyShortenerLimit();
+    const limit = await this.shortenerService.getDailyShortenerLimit(
+      req.user?._id,
+    );
     const used = await this.shortenerService.countDailyCreatedByUser(
       req.user?._id,
     );
@@ -70,6 +79,7 @@ export class ShortenerController {
       username,
       fullName,
       role,
+      level: account.level,
       unlimited: false,
       limit,
       used,

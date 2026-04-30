@@ -17,11 +17,13 @@ import {
   buildSort,
   paginateModel,
 } from "../common/pagination";
+import { LevelService } from "./level.service";
 
 @Injectable()
 export class AccountService {
   constructor(
     @InjectModel(Account.name) private accountModel: Model<AccountDocument>,
+    private levelService: LevelService,
   ) {}
 
   async create(
@@ -53,7 +55,11 @@ export class AccountService {
   }
 
   async findAll(): Promise<ResponseAccountDto[]> {
-    return this.accountModel.find().select("-password").exec();
+    return this.accountModel
+      .find()
+      .populate("level")
+      .select("-password")
+      .exec();
   }
 
   async findAllPaginated(
@@ -73,10 +79,18 @@ export class AccountService {
 
     const sort = buildSort(sortBy, sortOrder);
 
-    const [accounts, total] = await Promise.all([
-      paginateModel(this.accountModel, query, sort, page, limit, "-password"),
-      this.accountModel.countDocuments(query).exec(),
-    ]);
+    const accounts = await paginateModel(
+      this.accountModel,
+      query,
+      sort,
+      page,
+      limit,
+      "-password",
+    );
+    const populatedAccounts = await Promise.all(
+      accounts.map((acc) => acc.populate("level")),
+    );
+    const total = await this.accountModel.countDocuments(query).exec();
 
     return { accounts, total };
   }
@@ -84,6 +98,7 @@ export class AccountService {
   async findOne(id: string): Promise<ResponseAccountDto> {
     const account = await this.accountModel
       .findById(id)
+      .populate("level")
       .select("-password")
       .exec();
     if (!account) {
@@ -98,6 +113,7 @@ export class AccountService {
   ): Promise<ResponseAccountDto> {
     const account = await this.accountModel
       .findById(id)
+      .populate("level")
       .select("-password")
       .exec();
     if (!account) {
@@ -144,6 +160,20 @@ export class AccountService {
     });
 
     await admin.save();
+  }
+
+  async ensureDefaultLevelExists(): Promise<void> {
+    const existingLevel = await this.levelService.findAll();
+    if (existingLevel.length === 0) {
+      await this.levelService.create({
+        name: "Free",
+        price: 0,
+        dailyShortenLimit: 10, // Will be overridden by config
+        allowPassword: false,
+        allowCustomExpiration: false,
+        active: true,
+      });
+    }
   }
 
   async update(
@@ -220,6 +250,26 @@ export class AccountService {
 
   async remove(id: string): Promise<Account> {
     const account = await this.accountModel.findByIdAndDelete(id).exec();
+    if (!account) {
+      throw new NotFoundException(`Account with ID ${id} not found`);
+    }
+    return account;
+  }
+
+  async updateLevel(
+    id: string,
+    levelId: string | null,
+    levelExpirationDate: Date | null,
+  ): Promise<Account> {
+    const account = await this.accountModel
+      .findByIdAndUpdate(
+        id,
+        { level: levelId, levelExpirationDate },
+        { new: true },
+      )
+      .populate("level")
+      .select("-password")
+      .exec();
     if (!account) {
       throw new NotFoundException(`Account with ID ${id} not found`);
     }

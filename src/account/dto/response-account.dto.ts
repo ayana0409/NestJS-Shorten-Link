@@ -5,4 +5,6 @@ export class ResponseAccountDto {
   fullname!: string;
   role!: AccountRole;
   isActive!: boolean;
+  level?: any; // Will be populated
+  levelExpirationDate?: Date | null;
 }

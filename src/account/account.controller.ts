@@ -126,9 +126,13 @@ export class AccountController {
     );
   }
 
-  @Delete(":id")
-  @UseGuards(AuthGuard, AdminGuard)
-  remove(@Param("id") id: string) {
-    return this.accountService.remove(id);
+  @Patch(":id/level")
+  @UseGuards(AuthGuard, ManagerGuard)
+  updateLevel(
+    @Param("id") id: string,
+    @Body("levelId") levelId: string | null,
+    @Body("levelExpirationDate") levelExpirationDate: Date | null,
+  ) {
+    return this.accountService.updateLevel(id, levelId, levelExpirationDate);
   }
 }

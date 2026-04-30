@@ -31,6 +31,7 @@ async function bootstrap() {
     configService.get<string>("ADMIN_FULLNAME", "Administrator"),
     configService.get<string>("ADMIN_PASSWORD", "Passw0rd@123"),
   );
+  await accountService.ensureDefaultLevelExists();
 
   // const port = Number(configService.get<string>("PORT", "3000"));
   // await app.listen(port);

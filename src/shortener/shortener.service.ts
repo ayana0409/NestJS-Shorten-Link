@@ -17,6 +17,7 @@ import * as he from "he";
 import { ConfigManagerService } from "../config/config-manager.service";
 
 import { buildSort, paginateModel } from "../common/pagination";
+import { AccountService } from "../account/account.service";
 dotenv.config();
 
 @Injectable()
@@ -25,19 +26,38 @@ export class ShortenerService {
     @InjectModel(Shortener.name) private shortenerModel: Model<Shortener>,
     private configService: ConfigService,
     private configManagerService: ConfigManagerService,
+    private accountService: AccountService,
   ) {}
 
   async create(createShortenerDto: CreateShortenerDto) {
-    const { originalUrl } = createShortenerDto;
+    const { originalUrl, userId } = createShortenerDto;
+
+    // Check password permission
+    if (createShortenerDto.password && !(await this.canUsePassword(userId))) {
+      throw new BadRequestException(
+        "Your current level does not allow password protection for links.",
+      );
+    }
+
+    // Check custom expiration permission
+    if (
+      createShortenerDto.validityToDate &&
+      !(await this.canUseCustomExpiration(userId))
+    ) {
+      throw new BadRequestException(
+        "Your current level does not allow custom expiration dates for links.",
+      );
+    }
 
     const shortUrlLength = await this.configManagerService.getNumberValue(
       "SHORT_URL_LENGTH",
       6,
     );
-    const shortUrlExpirationMinutes = await this.configManagerService.getNumberValue(
-      "SHORT_URL_EXPIRATION_DAYS",
-      300,
-    );
+    const shortUrlExpirationMinutes =
+      await this.configManagerService.getNumberValue(
+        "SHORT_URL_EXPIRATION_DAYS",
+        300,
+      );
 
     const shortUrl = await this.generateUniqueShortUrl(shortUrlLength);
 
@@ -192,8 +212,54 @@ export class ShortenerService {
     return this.shortenerModel.countDocuments(query).exec();
   }
 
-  async getDailyShortenerLimit(): Promise<number> {
+  async getDailyShortenerLimit(userId?: string): Promise<number> {
+    if (!userId) {
+      return this.configManagerService.getNumberValue(
+        "DAILY_SHORTEN_LIMIT",
+        10,
+      );
+    }
+
+    const account = await this.accountService.findOne(userId);
+    if (
+      account.level &&
+      account.levelExpirationDate &&
+      account.levelExpirationDate > new Date()
+    ) {
+      return account.level.dailyShortenLimit;
+    }
+
     return this.configManagerService.getNumberValue("DAILY_SHORTEN_LIMIT", 10);
+  }
+
+  async canUsePassword(userId?: string): Promise<boolean> {
+    if (!userId) return false;
+
+    const account = await this.accountService.findOne(userId);
+    if (
+      account.level &&
+      account.levelExpirationDate &&
+      account.levelExpirationDate > new Date()
+    ) {
+      return account.level.allowPassword;
+    }
+
+    return false; // Level 0 không cho phép
+  }
+
+  async canUseCustomExpiration(userId?: string): Promise<boolean> {
+    if (!userId) return false;
+
+    const account = await this.accountService.findOne(userId);
+    if (
+      account.level &&
+      account.levelExpirationDate &&
+      account.levelExpirationDate > new Date()
+    ) {
+      return account.level.allowCustomExpiration;
+    }
+
+    return false; // Level 0 không cho phép
   }
 
   async countDailyCreatedByUser(userId: string): Promise<number> {

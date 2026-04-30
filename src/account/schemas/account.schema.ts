@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import { Document, Types } from "mongoose";
 import { AccountRole } from "../account-role.enum";
 
 export type AccountDocument = Account & Document;
@@ -20,6 +20,12 @@ export class Account {
 
   @Prop({ default: true })
   isActive!: boolean;
+
+  @Prop({ type: Types.ObjectId, ref: "Level", default: null })
+  level!: Types.ObjectId | null;
+
+  @Prop({ type: Date, default: null })
+  levelExpirationDate!: Date | null;
 }
 
 export const AccountSchema = SchemaFactory.createForClass(Account);
