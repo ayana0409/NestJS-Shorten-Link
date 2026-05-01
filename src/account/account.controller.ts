@@ -112,6 +112,12 @@ export class AccountController {
     return this.accountService.setActive(id, isActive);
   }
 
+  @Delete(":id")
+  @UseGuards(AuthGuard, AdminGuard)
+  delete(@Param("id") id: string) {
+    return this.accountService.remove(id);
+  }
+
   @Patch(":id")
   @UseGuards(AuthGuard, ManagerGuard)
   update(
