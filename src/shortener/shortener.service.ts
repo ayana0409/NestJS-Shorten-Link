@@ -223,8 +223,7 @@ export class ShortenerService {
     const account = await this.accountService.findOne(userId);
     if (
       account.level &&
-      account.levelExpirationDate &&
-      account.levelExpirationDate > new Date()
+      (!account.levelExpirationDate || account.levelExpirationDate > new Date())
     ) {
       return account.level.dailyShortenLimit;
     }
@@ -238,8 +237,7 @@ export class ShortenerService {
     const account = await this.accountService.findOne(userId);
     if (
       account.level &&
-      account.levelExpirationDate &&
-      account.levelExpirationDate > new Date()
+      (!account.levelExpirationDate || account.levelExpirationDate > new Date())
     ) {
       return account.level.allowPassword;
     }
@@ -253,8 +251,7 @@ export class ShortenerService {
     const account = await this.accountService.findOne(userId);
     if (
       account.level &&
-      account.levelExpirationDate &&
-      account.levelExpirationDate > new Date()
+      (!account.levelExpirationDate || account.levelExpirationDate > new Date())
     ) {
       return account.level.allowCustomExpiration;
     }

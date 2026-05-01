@@ -1,13 +1,22 @@
-import { Controller, Delete, Get, Query, UseGuards } from "@nestjs/common";
+import {
+  Controller,
+  Delete,
+  Get,
+  Query,
+  UseGuards,
+  UseInterceptors,
+} from "@nestjs/common";
 import { AuditLogService } from "./audit-log.service";
 import { AuthGuard } from "../auth/auth.guard";
 import { AdminGuard } from "../auth/admin.guard";
+import { SanitizeAuditLogInterceptor } from "../common/interceptors/sanitize-audit-log.interceptor ";
 
 @Controller("audit")
 export class AuditLogController {
   constructor(private readonly auditLogService: AuditLogService) {}
 
   @Get("admin")
+  @UseInterceptors(SanitizeAuditLogInterceptor)
   @UseGuards(AuthGuard, AdminGuard)
   async findAllAdmin(
     @Query("search") search?: string,
