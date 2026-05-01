@@ -275,4 +275,35 @@ export class AccountService {
     }
     return account;
   }
+
+  async handleLevelExpiration(userId: string): Promise<AccountDocument> {
+    const account = await this.accountModel
+      .findById(userId)
+      .populate("level")
+      .exec();
+    if (!account) {
+      throw new NotFoundException(`Account with ID ${userId} not found`);
+    }
+
+    if (
+      account.level &&
+      account.levelExpirationDate &&
+      new Date(account.levelExpirationDate) < new Date()
+    ) {
+      const updatedAccount = await this.accountModel
+        .findByIdAndUpdate(
+          userId,
+          { level: null, levelExpirationDate: null },
+          { new: true },
+        )
+        .populate("level")
+        .exec();
+
+      if (!updatedAccount) {
+        throw new NotFoundException(`Account with ID ${userId} not found`);
+      }
+      return updatedAccount;
+    }
+    return account;
+  }
 }

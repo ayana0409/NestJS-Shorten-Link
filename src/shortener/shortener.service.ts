@@ -244,7 +244,7 @@ export class ShortenerService {
       return account.level.allowPassword;
     }
 
-    return false; // Level 0 không cho phép
+    return false;
   }
 
   async canUseCustomExpiration(userId?: string): Promise<boolean> {
@@ -259,7 +259,7 @@ export class ShortenerService {
       return account.level.allowCustomExpiration;
     }
 
-    return false; // Level 0 không cho phép
+    return false;
   }
 
   async countDailyCreatedByUser(userId: string): Promise<number> {

@@ -30,6 +30,10 @@ export class ShortenerController {
   @UseGuards(AuthGuard)
   async create(@Request() req, @Body() createShortenerDto: CreateShortenerDto) {
     const userId = req.user?._id;
+
+    // Check and handle level expiration before creation
+    await this.accountService.handleLevelExpiration(userId);
+
     createShortenerDto.userId = userId;
 
     if (req.user?.role !== "admin") {
@@ -39,6 +43,21 @@ export class ShortenerController {
         throw new BadRequestException(
           `Bạn đã đạt giới hạn ${limit} liên kết hôm nay. Vui lòng thử lại vào ngày mai.`,
         );
+      }
+
+      // If not allowed by level, remove these fields instead of throwing error
+      if (
+        createShortenerDto.password &&
+        !(await this.shortenerService.canUsePassword(userId))
+      ) {
+        delete createShortenerDto.password;
+      }
+
+      if (
+        createShortenerDto.validityToDate &&
+        !(await this.shortenerService.canUseCustomExpiration(userId))
+      ) {
+        delete createShortenerDto.validityToDate;
       }
     }
 
@@ -52,7 +71,9 @@ export class ShortenerController {
     const fullName = req.user?.fullname || "Người dùng";
     const role = req.user?.role || "user";
 
-    const account = await this.accountService.findOne(req.user?._id);
+    const userId = req.user?._id;
+    await this.accountService.handleLevelExpiration(userId);
+    const account = await this.accountService.findOne(userId);
 
     if (role === "admin") {
       return {
