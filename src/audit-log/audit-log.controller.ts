@@ -16,7 +16,6 @@ export class AuditLogController {
   constructor(private readonly auditLogService: AuditLogService) {}
 
   @Get("admin")
-  @UseInterceptors(SanitizeAuditLogInterceptor)
   @UseGuards(AuthGuard, AdminGuard)
   async findAllAdmin(
     @Query("search") search?: string,

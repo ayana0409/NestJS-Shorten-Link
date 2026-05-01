@@ -44,7 +44,16 @@ export class AuditLogService {
       this.auditLogModel.countDocuments(query).exec(),
     ]);
 
-    return { logs, total };
+    const safeLogs = logs.map((log: any) => {
+      const item = log.toObject ? log.toObject() : log;
+
+      return {
+        ...item,
+        requestBody: sanitizeRequestBody(item.requestBody),
+      };
+    });
+
+    return { logs: safeLogs, total };
   }
 
   async deleteByCondition(
@@ -82,4 +91,28 @@ export class AuditLogService {
     const result = await this.auditLogModel.deleteMany(query).exec();
     return { deletedCount: result.deletedCount ?? 0 };
   }
+}
+
+function sanitizeRequestBody(body: any) {
+  if (!body || typeof body !== "object") return body;
+
+  const clone = { ...body };
+
+  const sensitiveFields = [
+    "password",
+    "confirmPassword",
+    "oldPassword",
+    "newPassword",
+    "token",
+    "refreshToken",
+    "accessToken",
+  ];
+
+  for (const key of sensitiveFields) {
+    if (key in clone) {
+      clone[key] = "***REDACTED***";
+    }
+  }
+
+  return clone;
 }
