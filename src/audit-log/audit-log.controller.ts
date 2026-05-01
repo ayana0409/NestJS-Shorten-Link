@@ -9,7 +9,6 @@ import {
 import { AuditLogService } from "./audit-log.service";
 import { AuthGuard } from "../auth/auth.guard";
 import { AdminGuard } from "../auth/admin.guard";
-import { SanitizeAuditLogInterceptor } from "../common/interceptors/sanitize-audit-log.interceptor ";
 
 @Controller("audit")
 export class AuditLogController {
