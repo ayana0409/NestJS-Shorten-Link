@@ -1,4 +1,4 @@
-import { forwardRef, Module, OnModuleInit } from "@nestjs/common";
+import { forwardRef, Global, Module, OnModuleInit } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { AccountModule } from "../account/account.module";
@@ -7,7 +7,9 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { AuthGuard } from "./auth.guard";
 import { AdminGuard } from "./admin.guard";
 import { ManagerGuard } from "./manager.guard";
+import { SsoJwksService } from "./sso-jwks.service";
 
+@Global()
 @Module({
   imports: [
     forwardRef(() => AccountModule),
@@ -41,8 +43,8 @@ import { ManagerGuard } from "./manager.guard";
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AuthGuard, AdminGuard, ManagerGuard],
-  exports: [AuthService, AuthGuard, AdminGuard, ManagerGuard],
+  providers: [AuthService, SsoJwksService, AuthGuard, AdminGuard, ManagerGuard],
+  exports: [AuthService, SsoJwksService, AuthGuard, AdminGuard, ManagerGuard],
 })
 export class AuthModule implements OnModuleInit {
   constructor(private readonly authService: AuthService) {}

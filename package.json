@@ -37,6 +37,7 @@
     "dotenv": "^16.4.7",
     "he": "^1.2.0",
     "helmet": "^8.1.0",
+    "jwks-rsa": "^4.1.0",
     "mongoose": "^8.9.6",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

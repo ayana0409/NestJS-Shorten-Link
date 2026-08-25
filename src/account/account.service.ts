@@ -375,4 +375,56 @@ export class AccountService {
 
     return true;
   }
+
+  /**
+   * Find existing account by username or create/update from QuickBite SSO claims.
+   * Ensures MongoDB account _id exists for proper relational linkage.
+   */
+  async findOrCreateOrUpdateSsoAccount(ssoUser: {
+    username: string;
+    fullname: string;
+    role: AccountRole;
+    email?: string;
+  }): Promise<AccountDocument> {
+    let account = await this.accountModel
+      .findOne({ username: ssoUser.username })
+      .exec();
+
+    if (!account) {
+      // Auto-provision new SSO user in MongoDB
+      const randomPassword = `sso_${Math.random().toString(36).slice(-8)}_${Date.now()}`;
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(randomPassword, salt);
+
+      account = new this.accountModel({
+        username: ssoUser.username,
+        fullname: ssoUser.fullname || ssoUser.username,
+        password: hashedPassword,
+        role: ssoUser.role || AccountRole.USER,
+        isActive: true,
+      });
+
+      await account.save();
+    } else {
+      let isUpdated = false;
+      if (ssoUser.fullname && account.fullname !== ssoUser.fullname) {
+        account.fullname = ssoUser.fullname;
+        isUpdated = true;
+      }
+      if (ssoUser.role && account.role !== ssoUser.role) {
+        account.role = ssoUser.role;
+        isUpdated = true;
+      }
+
+      if (isUpdated) {
+        await account.save();
+        const accountId = String((account as any)._id);
+        await this.execRedis((redis) =>
+          redis.invalidateUserPermissions(accountId),
+        );
+      }
+    }
+
+    return account;
+  }
 }

@@ -6,9 +6,17 @@ import {
 } from "@nestjs/common";
 import { I18nService } from "../common/i18n";
 
+const ADMIN_ROLES = [
+  "admin",
+  "administrator",
+  "superadmin",
+  "system_admin",
+  "shorterlink-admin",
+];
+
 @Injectable()
 export class AdminGuard implements CanActivate {
-  constructor(private i18n: I18nService) {}
+  constructor(private i18n: I18nService) { }
 
   /**
    * Helper to resolve a message using the default locale
@@ -21,10 +29,25 @@ export class AdminGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    if (!user || user.role !== "admin") {
+    if (!user) {
+      throw new ForbiddenException(this.msg("auth.ADMIN_ACCESS_REQUIRED"));
+    }
+
+    const role = user.role?.toLowerCase?.();
+    const roles: string[] = Array.isArray(user.roles)
+      ? user.roles.map((r: any) => String(r).toLowerCase().trim())
+      : [];
+
+    const isAdmin =
+      role === "admin" ||
+      ADMIN_ROLES.includes(role) ||
+      roles.some((r) => ADMIN_ROLES.includes(r));
+
+    if (!isAdmin) {
       throw new ForbiddenException(this.msg("auth.ADMIN_ACCESS_REQUIRED"));
     }
 
     return true;
   }
 }
+
